@@ -237,8 +237,12 @@ def _run(body, out, timeout=600, on_progress=None, cancel_event=None):
 
 def generate(prompt, width=768, height=768, seed=-1, out="out.png", steps=4,
              init_image=None, mask_image=None, strength=0.75, on_progress=None,
-             cancel_event=None):
+             cancel_event=None, ref_images=None):
     """Text-to-image, img2img (init_image) or inpainting (init_image + mask_image).
+
+    ref_images: paths of reference images (the FLUX.2-style multi-reference input that
+    sd-server takes as "ref_images"): the model keeps their subjects' look, e.g. one
+    character drawn in a new pose. They combine with text-to-image, img2img or inpainting.
 
     steps: 3 (draft) or 4 (standard) use the turbo LoRAs; any other value (e.g. 50 = "high")
     runs the full model with the official CFG 3 settings. Mask: white = repaint, black = keep.
@@ -279,6 +283,8 @@ def generate(prompt, width=768, height=768, seed=-1, out="out.png", steps=4,
         body["init_image"] = _b64(init_image)
     if mask_image:
         body["mask_image"] = _b64(mask_image)
+    if ref_images:
+        body["ref_images"] = [_b64(r) for r in ref_images]
     return _run(body, out, timeout=timeout, on_progress=on_progress, cancel_event=cancel_event)
 
 
@@ -624,6 +630,7 @@ def main():
     p.add_argument("--upscale", action="store_true", help="2x Lanczos upscale after generation")
     p.add_argument("--init", help="init image for img2img / inpainting")
     p.add_argument("--mask", help="mask image (white = repaint)")
+    p.add_argument("--ref", action="append", default=None, help="reference image to keep a subject's look (repeatable)")
     p.add_argument("--strength", type=float, default=None)
     p.add_argument("--layout", help="layout JSON file (MOSS native format, used as prompt)")
     p.add_argument("--cutout", action="store_true",
@@ -684,7 +691,7 @@ def main():
 
     strength = a.strength if a.strength is not None else (1.0 if a.mask else 0.75)
     path, secs = generate(prompt, width, height, a.seed, out, a.steps, a.init, a.mask, strength,
-                          on_progress=cb)
+                          on_progress=cb, ref_images=a.ref)
     if cb:
         print(file=sys.stderr)
     if a.upscale:
