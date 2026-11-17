@@ -1,6 +1,6 @@
 # Downloaded by setup.sh (multi-GB, not redistributed here)
 bin/
-models/
+/models
 .build/
 
 # Runtime
@@ -16,3 +16,6 @@ research_notes/
 reports/
 
 .DS_Store
+
+# Local copy of the model files (models -> models_local)
+models_local/
