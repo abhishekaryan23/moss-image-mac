@@ -21,6 +21,16 @@ for f in bin/sd-server models/diffusion_models/MOSS-Image-SFT-Q4_0.gguf \
   [[ -e "$f" ]] || { echo "error: $f missing - run ./setup.sh first" >&2; exit 1; }
 done
 
+# sd-server loads weights on the first request. If a model file is an online-only cloud
+# placeholder (Google Drive / iCloud "dataless"), that request first downloads it, which turned
+# the first image into a 5-13 minute wait. Keep models/ on local disk; warn if it is not.
+for f in models/diffusion_models/MOSS-Image-SFT-Q4_0.gguf models/text_encoders/Qwen3.5-9B-Q4_K_M.gguf \
+         models/vae/flux2_ae_small.safetensors models/tokenizers/tokenizer_qwen3.5.json models/loras/*.safetensors; do
+  if [[ "$(stat -L -f %Sf "$f" 2>/dev/null)" == *dataless* ]]; then
+    echo "warning: $f is online-only (not on local disk); the first image will wait for it to download." >&2
+  fi
+done
+
 # Never load a second copy of the models: two backends exhaust GPU memory and produce
 # blank images.
 if curl -s -m 2 "http://127.0.0.1:${PORT}/sdcpp/v1/capabilities" 2>/dev/null | grep -q 'MOSS-Image-SFT'; then
